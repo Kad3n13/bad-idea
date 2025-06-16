@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Mousepad Tracker - Artisan Zero</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            display: flex;
+            gap: 20px;
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .mousepad-container {
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 10px;
+            background: #2a2a2a;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .mousepad-title {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        #mousepad {
+            background: #000000;
+            border: 1px solid #666;
+            cursor: crosshair;
+            position: relative;
+            margin: 0 auto;
+            display: block;
+        }
+
+        .control-panel {
+            background: #2a2a2a;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            min-width: 300px;
+            height: fit-content;
+        }
+
+        .info-section {
+            background: #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .info-section h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .info-line {
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        select, button {
+            padding: 8px;
+            border: 1px solid #555;
+            background: #444;
+            color: #fff;
+            border-radius: 4px;
+        }
+
+        button {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        .crosshair {
+            position: absolute;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .crosshair-h {
+            height: 2px;
+            background: #ff0000;
+            width: 30px;
+            margin-left: -15px;
+        }
+
+        .crosshair-v {
+            width: 2px;
+            background: #ff0000;
+            height: 30px;
+            margin-top: -15px;
+        }
+
+        .mouse-indicator {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            pointer-events: none;
+            z-index: 15;
+            transition: all 0.05s ease;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .aim-line {
+            position: absolute;
+            background: rgba(255, 255, 0, 0.6);
+            height: 1px;
+            pointer-events: none;
+            z-index: 5;
+            transform-origin: left center;
+        }
+
+        .angle-guide {
+            position: absolute;
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 3;
+        }
+
+        .instructions {
+            background: #1a3a1a;
+            border: 1px solid #4a6a4a;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="mousepad-container">
+            <div class="mousepad-title">Virtual Mousepad (36.5x28.5 cm)</div>
+            <canvas id="mousepad" width="1379" height="1077"></canvas>
+            <div class="crosshair" id="crosshair-h">
+                <div class="crosshair-h"></div>
+            </div>
+            <div class="crosshair" id="crosshair-v">
+                <div class="crosshair-v"></div>
+            </div>
+            <div class="mouse-indicator" id="mouse-indicator"></div>
+            <div class="aim-line" id="aim-line"></div>
+            <div class="angle-guide" id="angle-guide-1"></div>
+            <div class="angle-guide" id="angle-guide-2"></div>
+            <div class="angle-guide" id="angle-guide-3"></div>
+        </div>
+
+        <div class="control-panel">
+            <div class="info-section">
+                <h3>Mousepad Info</h3>
+                <div class="info-line">Mousepad: Artisan Zero</div>
+                <div class="info-line">Size: 36.5x28.5 cm</div>
+                <div class="info-line">Sensitivity: 33cm/360°</div>
+                <div class="info-line">Resolution: 1379x1077</div>
+            </div>
+
+            <div class="info-section">
+                <h3>Position Info</h3>
+                <div class="info-line" id="pos-coords">X: 0, Y: 0</div>
+                <div class="info-line" id="pos-relative">Relative: (0.500, 0.500)</div>
+                <div class="info-line" id="pos-distance">Distance: 0.0 cm</div>
+                <div class="info-line" id="pos-rotation">Rotation: 0.0°</div>
+            </div>
+
+            <div class="info-section">
+                <h3>Visual Settings</h3>
+                <div class="controls">
+                    <div class="control-group">
+                        <label for="indicator-size">Indicator Size:</label>
+                        <input type="range" id="indicator-size" min="5" max="20" value="8">
+                    </div>
+                    <div class="control-group">
+                        <label for="indicator-color">Indicator Color:</label>
+                        <select id="indicator-color">
+                            <option value="#00ff00" selected>Lime</option>
+                            <option value="#ff0000">Red</option>
+                            <option value="#0000ff">Blue</option>
+                            <option value="#ffff00">Yellow</option>
+                            <option value="#ffffff">White</option>
+                            <option value="#ffa500">Orange</option>
+                            <option value="#ff69b4">Pink</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="show-crosshair" checked> Show Crosshair
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="show-aim-line" checked> Show Aim Line
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label>
+                            <input type="checkbox" id="show-angle-guides" checked> Show Angle Guides
+                        </label>
+                    </div>
+                    <div class="control-group">
+                        <label for="smoothing">Mouse Smoothing:</label>
+                        <input type="range" id="smoothing" min="0" max="10" value="3">
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section">
+                <h3>Controls</h3>
+                <button onclick="resetToCenter()">Reset to Center</button>
+            </div>
+
+            <div class="instructions">
+                <strong>Instructions:</strong><br>
+                Move your mouse over the virtual mousepad for real-time tracking. The aim line shows your current angle from center, angle guides help with precise movements, and smoothing reduces jitter. Perfect for aim training streams!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mousepad');
+        const ctx = canvas.getContext('2d');
+        const crosshairH = document.getElementById('crosshair-h');
+        const crosshairV = document.getElementById('crosshair-v');
+        const mouseIndicator = document.getElementById('mouse-indicator');
+        const aimLine = document.getElementById('aim-line');
+        const angleGuide1 = document.getElementById('angle-guide-1');
+        const angleGuide2 = document.getElementById('angle-guide-2');
+        const angleGuide3 = document.getElementById('angle-guide-3');
+        
+        const width = 1379;
+        const height = 1077;
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        let smoothedX = centerX;
+        let smoothedY = centerY;
+        let lastMouseX = centerX;
+        let lastMouseY = centerY;
+
+        // Aim training angles (common angles for flick shots)
+        const aimAngles = [30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330];
+
+        // Draw grid and center lines
+        function drawGrid() {
+            ctx.clearRect(0, 0, width, height);
+            
+            // Grid lines (every cm)
+            const cmToPx = 1379 / 36.5;
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            
+            for (let i = 0; i <= width; i += cmToPx) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, height);
+                ctx.stroke();
+            }
+            
+            for (let j = 0; j <= height; j += cmToPx) {
+                ctx.beginPath();
+                ctx.moveTo(0, j);
+                ctx.lineTo(width, j);
+                ctx.stroke();
+            }
+            
+            // Center lines
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(centerX, 0);
+            ctx.lineTo(centerX, height);
+            ctx.moveTo(0, centerY);
+            ctx.lineTo(width, centerY);
+            ctx.stroke();
+            
+            // Draw angle guide lines from center
+            if (document.getElementById('show-angle-guides').checked) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.2)';
+                ctx.lineWidth = 1;
+                
+                aimAngles.forEach(angle => {
+                    const radians = (angle - 90) * Math.PI / 180; // -90 to start from top
+                    const endX = centerX + Math.cos(radians) * Math.min(width, height) / 2;
+                    const endY = centerY + Math.sin(radians) * Math.min(width, height) / 2;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                });
+            }
+        }
+
+        function setupAngleGuides() {
+            const canvasRect = canvas.getBoundingClientRect();
+            const containerRect = canvas.parentElement.getBoundingClientRect();
+            const baseRadius = Math.min(width, height) / 6;
+            
+            const centerAbsX = centerX + (canvasRect.left - containerRect.left);
+            const centerAbsY = centerY + (canvasRect.top - containerRect.top);
+            
+            // Setup concentric circles for distance guides
+            [angleGuide1, angleGuide2, angleGuide3].forEach((guide, index) => {
+                const radius = baseRadius * (index + 1);
+                guide.style.width = (radius * 2) + 'px';
+                guide.style.height = (radius * 2) + 'px';
+                guide.style.left = (centerAbsX - radius) + 'px';
+                guide.style.top = (centerAbsY - radius) + 'px';
+                guide.style.borderColor = `rgba(0, 255, 255, ${0.3 - index * 0.05})`;
+            });
+        }
+
+        function updatePosition(rawX, rawY) {
+            // Apply smoothing
+            const smoothing = parseInt(document.getElementById('smoothing').value) / 10;
+            smoothedX = smoothedX * smoothing + rawX * (1 - smoothing);
+            smoothedY = smoothedY * smoothing + rawY * (1 - smoothing);
+            
+            const x = smoothedX;
+            const y = smoothedY;
+            
+            // Get canvas position to calculate absolute positions
+            const canvasRect = canvas.getBoundingClientRect();
+            const containerRect = canvas.parentElement.getBoundingClientRect();
+            
+            // Calculate position relative to the mousepad container
+            const absoluteX = x + (canvasRect.left - containerRect.left);
+            const absoluteY = y + (canvasRect.top - containerRect.top);
+            
+            // Update crosshair
+            if (document.getElementById('show-crosshair').checked) {
+                crosshairH.style.left = (absoluteX - 15) + 'px';
+                crosshairH.style.top = absoluteY + 'px';
+                crosshairV.style.left = absoluteX + 'px';
+                crosshairV.style.top = (absoluteY - 15) + 'px';
+            }
+            
+            // Update mouse indicator
+            const size = parseInt(document.getElementById('indicator-size').value);
+            mouseIndicator.style.left = (absoluteX - size) + 'px';
+            mouseIndicator.style.top = (absoluteY - size) + 'px';
+            mouseIndicator.style.width = (size * 2) + 'px';
+            mouseIndicator.style.height = (size * 2) + 'px';
+
+            // Update aim line from center to mouse position
+            if (document.getElementById('show-aim-line').checked) {
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                const centerAbsX = centerX + (canvasRect.left - containerRect.left);
+                const centerAbsY = centerY + (canvasRect.top - containerRect.top);
+                
+                aimLine.style.left = centerAbsX + 'px';
+                aimLine.style.top = centerAbsY + 'px';
+                aimLine.style.width = distance + 'px';
+                aimLine.style.transform = `rotate(${angle}deg)`;
+                aimLine.style.display = 'block';
+            } else {
+                aimLine.style.display = 'none';
+            }
+
+            // Calculate position info
+            const relX = (x / width).toFixed(3);
+            const relY = (y / height).toFixed(3);
+            
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const distancePx = Math.sqrt(dx * dx + dy * dy);
+            const distanceCm = (distancePx / (1379 / 36.5)).toFixed(2);
+            const rotation = ((distanceCm / 33) * 360).toFixed(1);
+            
+            // Calculate current angle from center
+            const angleFromCenter = Math.atan2(dy, dx) * 180 / Math.PI;
+            const normalizedAngle = ((angleFromCenter + 360) % 360).toFixed(1);
+
+            // Update info display
+            document.getElementById('pos-coords').textContent = `X: ${Math.round(x)}, Y: ${Math.round(y)}`;
+            document.getElementById('pos-relative').textContent = `Relative: (${relX}, ${relY})`;
+            document.getElementById('pos-distance').textContent = `Distance: ${distanceCm} cm`;
+            document.getElementById('pos-rotation').textContent = `Rotation: ${rotation}° | Angle: ${normalizedAngle}°`;
+            
+            // Store last position for smoothing
+            lastMouseX = x;
+            lastMouseY = y;
+        }
+
+        function resetToCenter() {
+            updatePosition(centerX, centerY);
+        }
+
+        // Event listeners
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            updatePosition(x, y);
+        });
+
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            updatePosition(x, y);
+        });
+
+        document.getElementById('indicator-size').addEventListener('input', function() {
+            const size = parseInt(this.value);
+            updatePosition(lastMouseX, lastMouseY);
+        });
+
+        document.getElementById('indicator-color').addEventListener('change', function() {
+            mouseIndicator.style.backgroundColor = this.value;
+        });
+
+        document.getElementById('show-crosshair').addEventListener('change', function() {
+            const display = this.checked ? 'block' : 'none';
+            crosshairH.style.display = display;
+            crosshairV.style.display = display;
+        });
+
+        document.getElementById('show-aim-line').addEventListener('change', function() {
+            updatePosition(lastMouseX, lastMouseY);
+        });
+
+        document.getElementById('show-angle-guides').addEventListener('change', function() {
+            const display = this.checked ? 'block' : 'none';
+            angleGuide1.style.display = display;
+            angleGuide2.style.display = display;
+            angleGuide3.style.display = display;
+            drawGrid(); // Redraw to show/hide angle lines
+        });
+
+        document.getElementById('smoothing').addEventListener('input', function() {
+            // Smoothing is applied in updatePosition function
+        });
+
+        // Initialize
+        drawGrid();
+        setupAngleGuides();
+        resetToCenter();
+        mouseIndicator.style.backgroundColor = '#00ff00';
+
+        // Position elements
+        crosshairH.style.position = 'absolute';
+        crosshairV.style.position = 'absolute';
+        mouseIndicator.style.position = 'absolute';
+        aimLine.style.position = 'absolute';
+    </script>
+</body>
+</html>
